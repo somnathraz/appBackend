@@ -48,10 +48,9 @@ export default async function handler(req, res) {
         speechRecognizer.startContinuousRecognitionAsync();
 
         // Continuously push audio data
-        for (const chunk of req.body.data) {
-          const audioData = Buffer.from(chunk, "base64");
-          pushStream.write(audioData);
-        }
+
+        const audioData = Buffer.from(chunk, "base64");
+        pushStream.write(audioData);
 
         // To stop speech recognition:
         // speechRecognizer.stopContinuousRecognitionAsync();
