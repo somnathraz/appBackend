@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
         // Continuously push audio data
 
-        const audioData = Buffer.from(chunk, "base64");
+        const audioData = Buffer.from(req.body.data, "base64");
         pushStream.write(audioData);
 
         // To stop speech recognition:
