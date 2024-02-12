@@ -20,45 +20,38 @@ export default async function handler(req, res) {
       console.log("====================================");
       const fromStream = async () => {
         let pushStream = sdk.AudioInputStream.createPushStream();
-        try {
-          pushStream.write(req.body.data);
+        let audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
+        let speechRecognizer = new sdk.SpeechRecognizer(
+          speechConfig,
+          audioConfig
+        );
 
-          let audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
-          let speechRecognizer = new sdk.SpeechRecognizer(
-            speechConfig,
-            audioConfig
-          );
+        // Event Handlers
+        speechRecognizer.recognizing = (s, e) => {
+          console.log(`RECOGNIZING: Text=${e.result.text}`, "done");
+        };
 
-          speechRecognizer.recognizeOnceAsync((result) => {
-            switch (result.reason) {
-              case sdk.ResultReason.RecognizedSpeech:
-                console.log(`RECOGNIZED: Text=${result.text}`);
-                break;
-              case sdk.ResultReason.NoMatch:
-                console.log("NOMATCH: Speech could not be recognized.");
-                break;
-              case sdk.ResultReason.Canceled:
-                const cancellation = sdk.CancellationDetails.fromResult(result);
-                console.log(`CANCELED: Reason=${cancellation.reason}`);
+        speechRecognizer.recognized = (s, e) => {
+          if (e.result.reason == sdk.ResultReason.RecognizedSpeech) {
+            console.log(`RECOGNIZED: Text=${e.result.text}`, "fully done");
+            res.status(200).json({ text: e.result.text });
+          } else if (e.result.reason == sdk.ResultReason.NoMatch) {
+            console.log("NOMATCH: Speech could not be recognized.");
+          }
+        };
 
-                if (cancellation.reason == sdk.CancellationReason.Error) {
-                  console.log(`CANCELED: ErrorCode=${cancellation.ErrorCode}`);
-                  console.log(
-                    `CANCELED: ErrorDetails=${cancellation.errorDetails}`
-                  );
-                  console.log(
-                    "CANCELED: Did you set the speech resource key and region values?"
-                  );
-                }
-                break;
-            }
-            res.status(200).json({ text: result.text });
-            speechRecognizer.close();
-          });
-        } catch (error) {
-          console.error("Error in fromStream:", error);
-          // Do not re-throw, the outer catch block will handle the error response
-        }
+        speechRecognizer.canceled = (s, e) => {
+          // ... (Error handling if needed)
+        };
+
+        // Start continuous recognition
+        speechRecognizer.startContinuousRecognitionAsync();
+
+        // Continuously push audio data
+        req.body.data.forEach((chunk) => pushStream.write(chunk));
+
+        // To stop speech recognition:
+        // speechRecognizer.stopContinuousRecognitionAsync();
       };
 
       fromStream();
